@@ -12,7 +12,7 @@ func main() {
     }
     defer conn.Close()
 
-    broadcast_addr, err := net.ResolveUDPAddr("udp4", "127.0.0.255:8829")
+    broadcast_addr, err := net.ResolveUDPAddr("udp4", "192.168.10.255:8829")
     if err != nil {
         panic(err)
     }
