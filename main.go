@@ -24,4 +24,9 @@ func main() {
         panic(err)
     }
     fmt.Printf("Received %v from %v\n", string(data[:size]), from)
+    size, from, err = conn.ReadFrom(data[:])
+    if err != nil {
+        panic(err)
+    }
+    fmt.Printf("Received %v from %v\n", string(data[:size]), from)
 }
