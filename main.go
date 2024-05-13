@@ -38,19 +38,16 @@ func FromBytes(buffer []byte) Packet {
 }
 
 func main() {
-    // p := Packet { PacketType(0), "theblek", "text" }
-    // buffer := p.ToBytes()
-    // fmt.Println(FromBytes(buffer))
     conn, err := net.ListenPacket("udp4", ":8829")
     if err != nil {
         panic(err)
     }
     defer conn.Close()
 
-    // _, err := net.ResolveUDPAddr("udp4", "192.168.10.255:8829")
-    // if err != nil {
-    //     panic(err)
-    // }
+    broadcast, err := net.ResolveUDPAddr("udp4", "192.168.10.255:8829")
+    if err != nil {
+        panic(err)
+    }
 
     stdin := make(chan string)
     go func() {
@@ -68,15 +65,12 @@ func main() {
         for {
             size, from, err := conn.ReadFrom(data[:])
             if err != nil {
-                // TODO: do not print error if it's "use of closed connection"
-                fmt.Println(err)
                 return;
             }
             text := string(data[:size])
             network <- Packet{ Message, from.String(), text }
         }
     }()
-
 
     for {
         select {
@@ -95,11 +89,13 @@ func main() {
                     conn.WriteTo([]byte(words[2]), addr)
                 } else if prompt[:5] == "/quit" {
                     return;
+                } else {
+                    conn.WriteTo([]byte(prompt), broadcast)
                 }
             case packet := <- network:
                 switch packet.Type {
                     case Message:
-                        fmt.Printf("%v: %v\n", packet.Name, packet.Data)
+                        fmt.Printf("[%v]: %v\n", packet.Name, packet.Data)
                 }
         }
     }
