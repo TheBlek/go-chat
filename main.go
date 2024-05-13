@@ -7,6 +7,7 @@ import (
     "strings"
     "bufio"
     "os"
+    "strconv"
 )
 
 type PacketType int64
@@ -38,19 +39,34 @@ func FromBytes(buffer []byte) Packet {
 }
 
 func main() {
+    addrs, err := net.InterfaceAddrs()
+    
+    fmt.Println("Select which ip address to use:")
+    for index, addr := range addrs {
+        switch a := addr.(type) {
+        case *net.IPNet:
+            fmt.Printf("[%v]: %v\n", index, a);
+            break;
+        }
+    }
+    reader := bufio.NewReader(os.Stdin)
+    input, _ := reader.ReadString('\n')
+    id, err := strconv.Atoi(input[:len(input)-1])
+    if err != nil || id < 0 || id >= len(addrs) {
+        fmt.Println("Invalid id");
+        return;
+    }
+    addr := addrs[id].(*net.IPNet)
+
+    ip := make(net.IP, len(addr.IP.To4()))
+    binary.BigEndian.PutUint32(ip, binary.BigEndian.Uint32(addr.IP.To4())|^binary.BigEndian.Uint32(net.IP(addr.Mask).To4()))
+    broadcast := net.UDPAddr { IP: ip, Port: 8829, Zone: "" }
+
     conn, err := net.ListenPacket("udp4", ":8829")
     if err != nil {
         panic(err)
     }
     defer conn.Close()
-
-    fmt.Println(conn.LocalAddr())
-
-    broadcast, err := net.ResolveUDPAddr("udp4", "192.168.10.255:8829")
-    if err != nil {
-        panic(err)
-    }
-
 
     stdin := make(chan string)
     go func() {
@@ -71,7 +87,9 @@ func main() {
                 return;
             }
             text := string(data[:size])
-            network <- Packet{ Message, from.String(), text }
+            if !from.(*net.UDPAddr).IP.Equal(addr.IP) {
+                network <- Packet{ Message, from.String(), text }
+            }
         }
     }()
 
@@ -93,7 +111,7 @@ func main() {
                 } else if prompt[:5] == "/quit" {
                     return;
                 } else {
-                    conn.WriteTo([]byte(prompt), broadcast)
+                    conn.WriteTo([]byte(prompt), &broadcast)
                 }
             case packet := <- network:
                 switch packet.Type {
