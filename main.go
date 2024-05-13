@@ -44,10 +44,13 @@ func main() {
     }
     defer conn.Close()
 
+    fmt.Println(conn.LocalAddr())
+
     broadcast, err := net.ResolveUDPAddr("udp4", "192.168.10.255:8829")
     if err != nil {
         panic(err)
     }
+
 
     stdin := make(chan string)
     go func() {
